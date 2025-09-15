@@ -8,7 +8,7 @@ The game renders in real-time to a **VGA monitor** and displays the score on the
 ## 🎮 Demo
 
 
-`![Flappy Bird](flappy_bird.gif)`
+![Flappy Bird Demo](flappy_bird.gif)
 
 ---
 
