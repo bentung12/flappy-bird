@@ -97,8 +97,6 @@ The game renders in real-time to a **VGA monitor** and displays the score on the
 
 ---
 
----
-
 ## 👤 Author
 
 FPGA project by **Benjamin Tung**.  
