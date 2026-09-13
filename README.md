@@ -8,9 +8,9 @@ Playable Flappy Bird in SystemVerilog on a Terasic DE0-CV. Renders live to VGA w
 
 ## Highlights
 
-- **No framebuffer.** Not enough on-chip RAM to store a frame, so the design computes each pixel's color on the fly at 25 MHz.
-- Sprites are inequalities, not stored bitmaps. Bird and wall are bounding-box comparisons against the current pixel coordinate.
-- **Collision detection is free** — it's the same comparison already used for rendering.
+- **No framebuffer.** Without enough on-chip RAM to store a frame, the design computes each pixel's color on the fly at 25 MHz.
+- Sprites are inequalities instead of stored bitmaps. Bird and wall are bounding-box comparisons against the current pixel coordinate.
+- Collision detection uses the same comparison already used for rendering.
 - Full game loop in hardware: physics, scrolling walls, scoring, death latch, 2-second start-up grace period.
 - 12-bit color (4 bits/channel), registered outputs, score on 7-segment displays.
 
@@ -45,7 +45,6 @@ Ceiling clamps but doesn't kill, matching the original game. Only walls and the 
 3. `KEY0` flaps. Score on `HEX1:HEX0`.
 
 ## Limitations
-- **Wall gaps aren't truly random.** Free-running mod-250 counter sampled at a fixed interval. An LFSR would fix it.
-- **Pixel clock is generated in logic, not a PLL.** Works, but no clock-tree routing and no timing analysis. ALTPLL or a clock enable is the correct approach.
+- **Wall gaps are not truly random.** Free-running mod-250 counter sampled at a fixed interval. An linear-feedback shift register would fix it.
 - **`wall_pos - 50` underflows** within 50 px of the left edge, breaking the wall's x-range test as it exits screen.
 - Bird counter saturates at the top but wraps at the bottom. Masked by the death latch except during the start-up grace period.
