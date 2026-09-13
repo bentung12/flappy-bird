@@ -45,6 +45,6 @@ Ceiling clamps but doesn't kill, matching the original game. Only walls and the 
 3. `KEY0` flaps. Score on `HEX1:HEX0`.
 
 ## Limitations
-- **Wall gaps are not truly random.** Free-running mod-250 counter sampled at a fixed interval. An linear-feedback shift register would fix it.
+- **Wall gaps are not truly random.** Free-running mod-250 counter sampled at a fixed interval. A linear-feedback shift register would fix it.
 - **`wall_pos - 50` underflows** within 50 px of the left edge, breaking the wall's x-range test as it exits screen.
 - Bird counter saturates at the top but wraps at the bottom. Masked by the death latch except during the start-up grace period.
