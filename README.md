@@ -1,103 +1,51 @@
-# Flappy Bird on FPGA (DE0-CV)
+# Flappy Bird on an FPGA
 
-An FPGA implementation of **Flappy Bird**, designed for the **Terasic DE0-CV (Cyclone V)** development board.  
-The game renders in real-time to a **VGA monitor** and displays the score on the on-board **7-segment HEX displays**.
+Playable Flappy Bird in SystemVerilog on a Terasic DE0-CV. Renders live to VGA without a processor or software.
 
----
+**Stack:** SystemVerilog · Cyclone V (DE0-CV) · Quartus Prime 22.1 · VGA 640×480
 
-## 🎮 Demo
+![Demo](flappy_bird.gif)
 
+## Highlights
 
-![Flappy Bird Demo](flappy_bird.gif)
+- **No framebuffer.** Not enough on-chip RAM to store a frame, so the design computes each pixel's color on the fly at 25 MHz.
+- Sprites are inequalities, not stored bitmaps. Bird and wall are bounding-box comparisons against the current pixel coordinate.
+- **Collision detection is free** — it's the same comparison already used for rendering.
+- Full game loop in hardware: physics, scrolling walls, scoring, death latch, 2-second start-up grace period.
+- 12-bit color (4 bits/channel), registered outputs, score on 7-segment displays.
 
----
+## How it works
 
-## ✨ Features
+| Piece | Implementation |
+|---|---|
+| Rendering | Priority mux over bounding-box comparisons, evaluated per pixel |
+| Bird position | Saturating counter, 480 states. Clamps at ceiling, does not wrap |
+| Wall position | Wrapping counter, 640 states, decrements 1 px / 166,667 cycles (~3 ms) |
+| Gravity | Bird falls 1 px / 150,000 cycles |
+| Death | Latched flip-flop: bird box ∩ wall box, or `pix_y == 479` (floor) |
+| Score | Two mod-10 counters, incremented when a wall clears the bird's x-range |
 
-- Real-time VGA output at **640×480 @ 60 Hz** (25 MHz pixel clock).
-- 12-bit color graphics (4 bits per R/G/B channel).
-- Flappy Bird gameplay:
-  - Bird controlled with the **KEY0 button** (jump).
-  - Randomized wall gaps scrolling across the screen.
-  - Collision detection with pipes and floor/ceiling.
-  - Score increments when passing through a wall gap.
-- Score displayed on the on-board **HEX0 / HEX1** 7-segment displays.
-- Resettable via the **reset signal (`rst`)**.
+Ceiling clamps but doesn't kill, matching the original game. Only walls and the floor are lethal.
 
----
+## Files
 
-## 🛠️ Hardware Requirements
+| File | Purpose |
+|---|---|
+| `flappy_bird.sv` | Top level. VGA controller + game engine + IO. |
+| `game_engine.sv` | Physics, walls, collision, scoring, per-pixel color. |
+| `vgaCtl.sv` | VGA timing. Pixel coords, pixel-valid, H/V sync. |
+| `clock.sv` | ÷2 divider. 50 MHz → 25 MHz pixel clock. |
+| `counter.sv` / `birdcounter.sv` | Parameterized wrapping / saturating counters. |
+| `my_dff.sv` / `ourHex.sv` | D flip-flop with enable; BCD → 7-segment. |
 
-- **Terasic DE0-CV (Cyclone V)** development board
-- **VGA monitor** + standard VGA cable
-- **USB-Blaster** (for programming via Quartus)
-- On-board push buttons:
-  - `KEY0`: Jump
-  - `rst`: Reset
+## Build
 
----
+1. Open `flappy_bird.qpf` in Quartus Prime 22.1
+2. Compile, program `.sof` to a DE0-CV
+3. `KEY0` flaps. Score on `HEX1:HEX0`.
 
-## 📂 Repository Structure
-
-| File | Description |
-|------|-------------|
-| `flappy_bird.sv` | Top-level module. Connects VGA controller, game engine, and IO (buttons, HEX displays). |
-| `game_engine.sv` | Core game logic: bird physics, wall movement, scoring, collision detection, color outputs. |
-| `vgaCtl.sv` | VGA timing generator (640×480 @ 60Hz). Produces pixel (x,y) coords, sync signals, frame ID. |
-| `clock.sv` | Clock divider / generator for pixel timing. |
-| `counter.sv` | Generic up/down counter with wrapping. |
-| `birdcounter.sv` | Specialized counter for bird position / score counting. |
-| `my_dff.sv` | Simple D flip-flop with async reset (utility module). |
-| `ourHex.sv` | Drives HEX0 / HEX1 7-segment displays for score output. |
-| `flappy_bird.qpf` | Quartus project file. |
-| `flappy_bird.qsf` | Quartus settings & pin assignments (DE0-CV specific). |
-| `c5_pin_model_dump.txt` | Pin model dump (Cyclone V reference). |
-
----
-
-## 🚀 Build & Run Instructions
-
-1. Open the project in **Quartus Prime Standard 22.1** (or matching version).
-   - Load `flappy_bird.qpf`.
-2. Connect your DE0-CV board to your PC via USB-Blaster.
-3. Compile the project (`Ctrl+L` in Quartus).
-4. Program the FPGA with the generated `.sof` bitstream.
-5. Connect a VGA monitor to the DE0-CV’s VGA port.
-6. Press **KEY0** to flap.  
-   - Score will appear on **HEX0/HEX1**.  
-   - Press **reset** (`rst`) to restart the game.
-
----
-
-## 🎛️ Controls
-
-- **KEY0** → Jump
-- **Reset (rst)** → Restart game
-- **HEX0 / HEX1** → Score display (decimal)
-
----
-
-## ⚙️ Customization
-
-- **Difficulty**  
-  Adjust wall speed, gap size, or gravity/jump impulse inside `game_engine.sv`.
-- **Graphics**  
-  Change color assignments in the rendering logic.
-- **Scoring**  
-  Modify scoring conditions or display logic (`ourHex.sv`).
-
----
-
-## 🐞 Troubleshooting
-
-- **No VGA signal** → Check clock divider (`clock.sv`) and ensure pixel clock ~25 MHz.  
-- **Wrong colors** → Verify VGA pin assignments in `flappy_bird.qsf`.  
-- **No response to KEY0** → Confirm button debounce / pin mapping in `.qsf`.  
-- **HEX displays blank** → Ensure `ourHex.sv` is instantiated in `flappy_bird.sv`.
-
----
-
-## 👤 Author
-
-FPGA project by **Benjamin Tung**.  
-Built for learning digital design, VGA controllers, and real-time game logic on FPGAs.
+## Limitations
+- **Wall gaps aren't truly random.** Free-running mod-250 counter sampled at a fixed interval. An LFSR would fix it.
+- **Pixel clock is generated in logic, not a PLL.** Works, but no clock-tree routing and no timing analysis. ALTPLL or a clock enable is the correct approach.
+- **`wall_pos - 50` underflows** within 50 px of the left edge, breaking the wall's x-range test as it exits screen.
+- Bird counter saturates at the top but wraps at the bottom. Masked by the death latch except during the start-up grace period.
